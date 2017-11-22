@@ -39,6 +39,8 @@ var createMain = {
   load: function () {
     var _this = this;
     this.queue.loadManifest(this.loadFileList);
+    this.queue.installPlugin(createjs.Sound);
+    this.queue.loadFile({id:"bg_music", src:"media/bg.mp3"});
     // 监听资源加载
     this.queue.on("fileload", this.handleFileLoad, this);
     this.queue.on("complete", this.handleComplete, this);
@@ -51,13 +53,14 @@ var createMain = {
     // 初始化load页
     this.loadPage = this.pageContainer.loadPage(this.queue);
     this.stage.addChild(this.loadPage);
+    this.initSoundIcon();
     // 更新画布信息
     this.stage.update();
   },
   /**
    * 初始化音频
    */
-  initSound: function () {
+  initSoundIcon: function () {
   },
   /**
    * 加载文件时候的回调
@@ -79,6 +82,7 @@ var createMain = {
    * @param e
    */
   handleComplete: function (e) {
+    createjs.Sound.play("bg_music", {interrupt: createjs.Sound.INTERRUPT_NONE, loop: -1, volume: 1});
     // 清除load页
     this.stage.removeChild(this.loadPage);
     this.currentPage = this.initPage(this.currentIndex)(this.queue);
@@ -177,24 +181,21 @@ var createMain = {
    * @param type
    */
   pageSwitchingSilder: function (type) {
+    this.stage.addChild(this.anotherPage);
+    this.stage.addChild(this.currentPage);
     var isNext = type == "next";
+    console.log(12);
     var deviceHeight = this.baseConfig.deviceHeight;
     var startY = isNext ? deviceHeight : (0 - deviceHeight);
     var endY = isNext ? (0 - deviceHeight) : deviceHeight;
     var _this = this;
-    // 设置开始的样式
+    this.anotherPage.y = startY;
     createjs.Tween
         .get(_this.currentPage)
-        .to({alpha: 0}, _this.baseConfig.duration)
-        // 执行程序之后的回调函数
-        .call(function () {
-          _this.stage.removeChild(this.currentPage);
-        });
-    // 设置结束的样式
-    // createjs.Tween
-    //     .get(this.anotherPage)
-    //     .to({y: endY})
-    //     .to({y: 0}, _this.baseConfig.duration);
+        .to({y: endY}, _this.baseConfig.duration);
+    createjs.Tween
+        .get(_this.anotherPage)
+        .to({y: 0}, _this.baseConfig.duration);
   },
   /**
    * 页面过度类型-渐隐渐现

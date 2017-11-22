@@ -10,14 +10,14 @@ var config = {
   duration: 600,          // 过度持续时间
   threshold: 50,          // 手势变化阀值
   musicPlay: false,       // 音乐播放开关
-  duratieType: "fade"     // 页面过渡类型
+  duratieType: "    "     // 页面过渡类型
 };
 // 加载的文件列表
 var loadFileList = [
   {id: 'flower', src: "imgs/flower.png"},
-  {id: "bg_music", src: "media/ddby.mp3"},
+  {id: "bg_music", src: "media/bg.mp3"},
   {id: 'bg_img', src: "imgs/bg.png"},
-  {id: 'bg_img_1', src: "imgs/bg1.png"}
+  {id: 'bg_day', src: "imgs/bg_day.png"}
 ];
 /**
  * 页面信息
@@ -80,8 +80,6 @@ var pageObj = {
    */
   page2: function (queue) {
     var container = new createjs.Container().set({x: 0, y: 0});
-    var bg = new createjs.Bitmap(queue.getResult("bg_img"));
-    container.addChild(bg);
     // 绘制形状
     var shape = new createjs.Shape();
     shape.graphics.beginFill("#ff0000").drawRect(0, 0, 100, 100);
