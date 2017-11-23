@@ -4,14 +4,16 @@ var createMain = {
   queue: new createjs.LoadQueue(),      // 负载管理器
   touchX: 0,                            // 触摸点 X
   touchY: 0,                            // 触摸点 Y
+  canSlide: true,                       // 是否可滑动的开关
   currentIndex: 1,                      // 当前页索引
+  loadPage: null,                       // 资源加载页面
   currentPage: null,                    // 当前页面
   anotherPage: null,                    // 另一个页面
-  canSlide: true,                       // 是否可滑动的开关
+  soundPlay: null,                      // 音乐播放元素
   baseConfig: config,                   // 基本配置信息
   pageContainer: pageObj,               // 页面信息
-  loadPage: null,                       // load页
-  loadFileList: loadFileList,           // 加载资源列表
+  loadPngList: loadPngList,             // 加载资源列表
+  loadMediaList: loadMediaList,         // 加载资源列表
   /**
    * 初始化
    * @param selector
@@ -38,29 +40,45 @@ var createMain = {
    */
   load: function () {
     var _this = this;
-    this.queue.loadManifest(this.loadFileList);
-    this.queue.installPlugin(createjs.Sound);
-    this.queue.loadFile({id:"bg_music", src:"media/bg.mp3"});
+    _this.queue.loadManifest(this.loadPngList);
+    // 音频插件注册和资源加载
+    _this.queue.installPlugin(createjs.Sound);
+    _this.loadMediaList.forEach(function (item, index) {
+      _this.queue.loadFile(item);
+    });
     // 监听资源加载
-    this.queue.on("fileload", this.handleFileLoad, this);
-    this.queue.on("complete", this.handleComplete, this);
+    _this.queue.on("fileload", _this.handleFileLoad, _this);
+    _this.queue.on("complete", _this.handleComplete, _this);
     // 监听手势变化
-    this.stage.addEventListener("mousedown", function (e) { _this.touchDown(e, _this) });
-    this.stage.addEventListener("pressup",  function (e) { _this.touchMove(e, _this) });
+    _this.stage.addEventListener("mousedown", function (e) { _this.touchDown(e, _this) });
+    _this.stage.addEventListener("pressup",  function (e) { _this.touchMove(e, _this) });
     // Ticker 轮询器
-    createjs.Ticker.setFPS(this.baseConfig.FTPtimer);
-    createjs.Ticker.addEventListener("tick", this.stage);
+    createjs.Ticker.setFPS(_this.baseConfig.FTPtimer);
+    createjs.Ticker.addEventListener("tick", _this.stage);
     // 初始化load页
-    this.loadPage = this.pageContainer.loadPage(this.queue);
-    this.stage.addChild(this.loadPage);
-    this.initSoundIcon();
+    _this.loadPage = _this.pageContainer.loadPage(_this.queue);
+    _this.stage.addChild(_this.loadPage);
     // 更新画布信息
-    this.stage.update();
+    _this.stage.update();
   },
   /**
-   * 初始化音频
+   * 音乐播放的控制
+   * @param Music
    */
-  initSoundIcon: function () {
+  SoundCtrl: function (Music) {
+    // 音乐播放的图标
+    var Icon = pageElement.musicIcon(this.queue);
+    var _this = this;
+    Music.on("paused", handPaused);
+    Music.setPaused(true);
+    function handPaused (e) {
+      Music.paused = !Music.paused;
+    }
+    Icon.addEventListener("click", function (e) {
+      handPaused();
+    });
+    handPaused();
+    this.currentPage.addChild(Icon);
   },
   /**
    * 加载文件时候的回调
@@ -68,6 +86,7 @@ var createMain = {
    */
   handleFileLoad: function (e) {
     var cTarget = e.currentTarget;
+    console.log(cTarget._numItems);
     var loadding = (cTarget._numItemsLoaded / cTarget._numItems) * 100;
     var text = new createjs.Text("", "80px Arial", "#555");
     text.text = "load... " + Math.floor(loadding) + " % ";
@@ -82,10 +101,12 @@ var createMain = {
    * @param e
    */
   handleComplete: function (e) {
-    createjs.Sound.play("bg_music", {interrupt: createjs.Sound.INTERRUPT_NONE, loop: -1, volume: 1});
+    this.soundPlay = createjs.Sound;
+    var Music = this.soundPlay.play("bg_music", {interrupt: createjs.Sound.INTERRUPT_NONE, loop: -1, volume: 1});
     // 清除load页
     this.stage.removeChild(this.loadPage);
     this.currentPage = this.initPage(this.currentIndex)(this.queue);
+    this.SoundCtrl(Music);
     this.stage.addChild(this.currentPage);
   },
   /**
@@ -122,28 +143,31 @@ var createMain = {
     var isLast = _this.currentIndex === _this.baseConfig.totalPage;
     if (type) {
       if (!isFirst) {
-        _this.flipPage(_this.currentIndex, "prev", _this.baseConfig.duratieType);
+        _this.flipPage("prev", _this.baseConfig.duratieType);
       }
     } else {
       if (!isLast) {
-        _this.flipPage(_this.currentIndex, "next", _this.baseConfig.duratieType);
+        _this.flipPage("next", _this.baseConfig.duratieType);
       }
     }
   },
   /**
    * 翻页
-   * @param 当前页面
    * @param 类型（0-上一页/1-下一页）
    * @param 方式（下滑/渐隐或其他方式）
    * @constructor
    */
-  flipPage: function (current, type, method) {
+  flipPage: function (type, method) {
     // 判断 prev -or- next
     var isPrev = type === "prev";
-    var another = isPrev ? (current - 1) : (current + 1);
+    var another = isPrev ? (this.currentIndex - 1) : (this.currentIndex + 1);
     this.currentIndex = another;
     // 初始化当前页和另外一页
     this.anotherPage = this.initPage(another)(this.queue);
+    // 添加两个页面 同时要保证当前页在顶层
+    this.stage.removeChild(this.currentPage);
+    this.stage.addChild(this.currentPage);
+    this.stage.addChild(this.anotherPage);
     // 执行页面切换方法
     this.switchPage(type, method);
   },
@@ -174,17 +198,13 @@ var createMain = {
     var startY = isNext ? deviceHeight : (0 - deviceHeight);
     var endY = isNext ? (0 - deviceHeight) : deviceHeight;
     this.stage.removeChild(this.currentPage);
-    this.stage.addChild(this.anotherPage);
   },
   /**
    * 页面过度类型-上下滑动
    * @param type
    */
   pageSwitchingSilder: function (type) {
-    this.stage.addChild(this.anotherPage);
-    this.stage.addChild(this.currentPage);
     var isNext = type == "next";
-    console.log(12);
     var deviceHeight = this.baseConfig.deviceHeight;
     var startY = isNext ? deviceHeight : (0 - deviceHeight);
     var endY = isNext ? (0 - deviceHeight) : deviceHeight;
@@ -207,19 +227,12 @@ var createMain = {
     var startY = isNext ? deviceHeight : (0 - deviceHeight);
     var endY = isNext ? (0 - deviceHeight) : deviceHeight;
     var _this = this;
-    this.stage.removeChild(this.currentPage);
-    this.anotherPage.alpha = 0;
-    this.stage.addChild(this.currentPage);
-    this.stage.addChild(this.anotherPage);
     createjs.Tween
         .get(_this.currentPage)
         .to({alpha: 0}, _this.baseConfig.duration)
         .call(function () {
           _this.stage.removeChild(this.currentPage);
         });
-    createjs.Tween
-        .get(_this.anotherPage)
-        .to({alpha: 1}, _this.baseConfig.duration);
   },
   /**
    * 初始化页面

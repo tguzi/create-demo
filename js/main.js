@@ -10,15 +10,35 @@ var config = {
   duration: 600,          // 过度持续时间
   threshold: 50,          // 手势变化阀值
   musicPlay: false,       // 音乐播放开关
-  duratieType: "    "     // 页面过渡类型
+  duratieType: "fade"     // 页面过渡类型
 };
-// 加载的文件列表
-var loadFileList = [
+// 加载的图片资源列表
+var loadPngList = [
   {id: 'flower', src: "imgs/flower.png"},
-  {id: "bg_music", src: "media/bg.mp3"},
   {id: 'bg_img', src: "imgs/bg.png"},
   {id: 'bg_day', src: "imgs/bg_day.png"}
 ];
+// 加载的音频文件列表
+var loadMediaList = [
+  {id:"bg_music", src:"media/bg.mp3"}
+];
+/**
+ * 页面元素类
+ * @type {{musicIcon: pageElement.musicIcon}}
+ */
+var pageElement = {
+  /**
+   * 音乐播放图标
+   * @param queue
+   */
+  musicIcon: function (queue) {
+    var container = new createjs.Container().set({x: config.deviceWidth - 120, y: 20});
+    var shape = new createjs.Shape();
+    shape.graphics.beginFill("blue").drawCircle(50, 50, 50);
+    container.addChild(shape);
+    return container;
+  }
+};
 /**
  * 页面信息
  * @type {{}}
@@ -80,6 +100,8 @@ var pageObj = {
    */
   page2: function (queue) {
     var container = new createjs.Container().set({x: 0, y: 0});
+    var bg = new createjs.Bitmap(queue.getResult("bg_img"));
+    container.addChild(bg);
     // 绘制形状
     var shape = new createjs.Shape();
     shape.graphics.beginFill("#ff0000").drawRect(0, 0, 100, 100);
